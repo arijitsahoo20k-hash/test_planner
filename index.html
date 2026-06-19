@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0A0A0A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Prayas 2.0" />
+  <meta name="description" content="Prayas 2.0 2027 — JEE Test Planner" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>Prayas 2.0 — Test Planner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <circle cx="14" cy="14" r="13" stroke="#F5A623" stroke-width="1.5"/>
+            <text x="14" y="19" text-anchor="middle" fill="#F5A623" font-family="Space Grotesk" font-weight="700" font-size="11">P</text>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-title">Prayas 2.0</span>
+          <span class="logo-sub">2027 Batch</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="calendar" onclick="setView('calendar')">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="2.5" width="14" height="12.5" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 1v3M11 1v3M1 6.5h14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          <span>Calendar</span>
+        </button>
+        <button class="nav-item" data-view="timeline" onclick="setView('timeline')">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="3" cy="4" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="3" cy="8" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="3" cy="12" r="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M6 4h8M6 8h8M6 12h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          <span>All Tests</span>
+        </button>
+        <button class="nav-item" data-view="subjects" onclick="setView('subjects')">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 8h8M2 13h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          <span>By Subject</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-stats">
+        <div class="stat-item">
+          <span class="stat-num" id="stat-total">31</span>
+          <span class="stat-label">Total Tests</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num" id="stat-upcoming">—</span>
+          <span class="stat-label">Upcoming</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num" id="stat-days">—</span>
+          <span class="stat-label">Days Left</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><span class="dot dot-main"></span>JEE Main</div>
+        <div class="legend-item"><span class="dot dot-adv"></span>JEE Advanced</div>
+        <div class="legend-item"><span class="dot dot-aits-p"></span>AITS Part</div>
+        <div class="legend-item"><span class="dot dot-aits-f"></span>AITS Full</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button class="menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="breadcrumb" id="breadcrumb">Calendar View</div>
+        </div>
+        <div class="top-bar-right">
+          <div class="next-test-pill" id="next-test-pill">
+            <span class="pill-label">Next test in</span>
+            <span class="pill-days" id="next-test-days">—</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Views -->
+      <div id="view-calendar" class="view active">
+        <div class="calendar-header">
+          <button class="month-nav" onclick="prevMonth()">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 5l-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="month-title-wrap">
+            <h1 class="month-title" id="month-title">June 2026</h1>
+            <div class="month-test-count" id="month-test-count">0 tests this month</div>
+          </div>
+          <button class="month-nav" onclick="nextMonth()">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M8 5l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <div class="month-strip" id="month-strip"></div>
+
+        <div class="calendar-grid-wrap">
+          <div class="day-labels">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+          </div>
+          <div class="calendar-grid" id="calendar-grid"></div>
+        </div>
+
+        <!-- Test cards below calendar -->
+        <div class="month-tests" id="month-tests"></div>
+      </div>
+
+      <div id="view-timeline" class="view">
+        <div class="timeline-header">
+          <h1 class="view-title">All Tests</h1>
+          <div class="filter-pills" id="filter-pills">
+            <button class="filter-pill active" data-filter="all" onclick="setFilter('all')">All</button>
+            <button class="filter-pill" data-filter="JEE Main" onclick="setFilter('JEE Main')">JEE Main</button>
+            <button class="filter-pill" data-filter="JEE Advanced" onclick="setFilter('JEE Advanced')">Advanced</button>
+            <button class="filter-pill" data-filter="AITS" onclick="setFilter('AITS')">AITS</button>
+          </div>
+        </div>
+        <div class="timeline-list" id="timeline-list"></div>
+      </div>
+
+      <div id="view-subjects" class="view">
+        <div class="subjects-header">
+          <h1 class="view-title">Syllabus by Subject</h1>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-subfilter="all" onclick="setSubFilter('all')">All</button>
+            <button class="filter-pill" data-subfilter="Physics" onclick="setSubFilter('Physics')">Physics</button>
+            <button class="filter-pill" data-subfilter="Chemistry" onclick="setSubFilter('Chemistry')">Chemistry</button>
+            <button class="filter-pill" data-subfilter="Maths" onclick="setSubFilter('Maths')">Maths</button>
+          </div>
+        </div>
+        <div class="subjects-list" id="subjects-list"></div>
+      </div>
+    </main>
+
+    <!-- Detail Drawer -->
+    <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+    <div class="drawer" id="drawer">
+      <div class="drawer-handle"></div>
+      <div class="drawer-content" id="drawer-content"></div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
