@@ -15,41 +15,23 @@ const TEST_MONTHS = [
   {y:2027,m:0},{y:2027,m:1},{y:2027,m:2},{y:2027,m:3},{y:2027,m:4}
 ];
 
-// Cached "today" — computed once, reused everywhere to avoid repeated Date construction
-const TODAY = new Date();
-TODAY.setHours(0,0,0,0);
-const TODAY_TIME = TODAY.getTime();
-
-// Pre-parse test dates once instead of re-parsing on every render
-TESTS.forEach(t => {
-  const d = new Date(t.date);
-  t._dateObj = d;
-  t._time = d.getTime();
-});
-
-// Precompute month key -> tests for fast lookup (avoids re-filtering TESTS repeatedly)
-const MONTH_TEST_MAP = {};
-TESTS.forEach(t => {
-  const d = t._dateObj;
-  const key = `${d.getFullYear()}-${d.getMonth()}`;
-  if (!MONTH_TEST_MAP[key]) MONTH_TEST_MAP[key] = [];
-  MONTH_TEST_MAP[key].push(t);
-});
-
 function init() {
-  // Determine starting month before any rendering
-  const upcoming = TESTS.filter(t => t._time >= TODAY_TIME).sort((a,b)=>a._time-b._time);
-  if (upcoming.length) {
-    const d = new Date(upcoming[0].date);
-    currentYear = d.getFullYear();
-    currentMonth = d.getMonth();
-  }
-
   updateStats();
   renderMonthStrip();
   renderCalendar();
   renderTimeline();
   renderSubjects();
+
+  // Auto navigate to first upcoming test month
+  const today = new Date();
+  const upcoming = TESTS.filter(t => new Date(t.date) >= today).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if (upcoming.length) {
+    const d = new Date(upcoming[0].date);
+    currentYear = d.getFullYear();
+    currentMonth = d.getMonth();
+  }
+  renderCalendar();
+  renderMonthStrip();
   updateNextTestPill();
 
   // Register service worker
@@ -59,19 +41,23 @@ function init() {
 }
 
 function updateStats() {
-  const upcoming = TESTS.filter(t => t._time >= TODAY_TIME);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const upcoming = TESTS.filter(t => new Date(t.date) >= today);
   document.getElementById('stat-total').textContent = TESTS.length;
   document.getElementById('stat-upcoming').textContent = upcoming.length;
 
-  const lastTestTime = new Date("2027-05-17").getTime();
-  const daysLeft = Math.ceil((lastTestTime - TODAY_TIME) / 86400000);
+  const lastTest = new Date("2027-05-17");
+  const daysLeft = Math.ceil((lastTest - today) / (1000*60*60*24));
   document.getElementById('stat-days').textContent = daysLeft > 0 ? daysLeft : 0;
 }
 
 function updateNextTestPill() {
-  const next = TESTS.filter(t => t._time >= TODAY_TIME).sort((a,b)=>a._time-b._time)[0];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const next = TESTS.filter(t => new Date(t.date) >= today).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];
   if (next) {
-    const days = Math.ceil((next._time - TODAY_TIME) / 86400000);
+    const days = Math.ceil((new Date(next.date) - today) / (1000*60*60*24));
     const pill = document.getElementById('next-test-pill');
     const daysEl = document.getElementById('next-test-days');
     if (days === 0) {
@@ -87,10 +73,13 @@ function renderMonthStrip() {
   const strip = document.getElementById('month-strip');
   strip.innerHTML = TEST_MONTHS.map(({y,m}) => {
     const isActive = y === currentYear && m === currentMonth;
-    const hasTests = !!MONTH_TEST_MAP[`${y}-${m}`];
+    const monthTests = TESTS.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === y && d.getMonth() === m;
+    });
     return `<button class="month-chip ${isActive ? 'active' : ''}" onclick="jumpToMonth(${y},${m})">
       <span class="month-chip-name">${SHORT_MONTHS[m]}</span>
-      ${hasTests ? `<span class="month-chip-dot"></span>` : ''}
+      ${monthTests.length ? `<span class="month-chip-dot"></span>` : ''}
     </button>`;
   }).join('');
 }
@@ -106,7 +95,10 @@ function renderCalendar() {
   const title = document.getElementById('month-title');
   title.textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
 
-  const monthTests = MONTH_TEST_MAP[`${currentYear}-${currentMonth}`] || [];
+  const monthTests = TESTS.filter(t => {
+    const d = new Date(t.date);
+    return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+  });
   document.getElementById('month-test-count').textContent =
     monthTests.length === 0 ? 'No tests this month' :
     monthTests.length === 1 ? '1 test this month' :
@@ -115,8 +107,8 @@ function renderCalendar() {
   const grid = document.getElementById('calendar-grid');
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
-  const monthStartTime = new Date(currentYear, currentMonth, 1).getTime();
-  const msPerDay = 86400000;
+  const today = new Date();
+  today.setHours(0,0,0,0);
 
   let html = '';
   for (let i = 0; i < firstDay; i++) {
@@ -124,12 +116,11 @@ function renderCalendar() {
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const cellTime = monthStartTime + (d - 1) * msPerDay;
+    const cellDate = new Date(currentYear, currentMonth, d);
     const tests = DATE_MAP[dateStr] || [];
-    const isToday = cellTime === TODAY_TIME;
-    const isPast = cellTime < TODAY_TIME;
-    const dow = (firstDay + d - 1) % 7;
-    const isWeekend = dow === 0 || dow === 6;
+    const isToday = cellDate.getTime() === today.getTime();
+    const isPast = cellDate < today;
+    const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
 
     let dotsHtml = '';
     if (tests.length) {
@@ -170,10 +161,11 @@ function renderMonthTests(tests) {
 
 function buildTestCard(t, variant = 'default') {
   const c = TYPE_COLORS[t.type];
-  const d = t._dateObj;
-  const days = Math.ceil((t._time - TODAY_TIME) / 86400000);
-  const isPast = t._time < TODAY_TIME;
-  const isToday = t._time === TODAY_TIME;
+  const d = new Date(t.date);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = Math.ceil((d - today) / (1000*60*60*24));
+  const isPast = d < today;
+  const isToday = d.getTime() === today.getTime();
 
   const countdown = isPast
     ? `<span class="countdown past">Done</span>`
@@ -197,6 +189,24 @@ function buildTestCard(t, variant = 'default') {
 }
 
 function renderTimeline() {
+  const container = document.getElementById('timeline-list');
+
+  // Group by month
+  const groups = {};
+  TESTS.forEach(t => {
+    const d = new Date(t.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    if (!groups[key]) groups[key] = { label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`, tests: [] };
+    groups[key].tests.push(t);
+  });
+
+  const filtered = (type) => {
+    if (type === 'all') return TESTS;
+    if (type === 'AITS') return TESTS.filter(t => t.type.startsWith('AITS'));
+    return TESTS.filter(t => t.type === type);
+  };
+
+  container.setAttribute('data-render', 'timeline');
   updateTimelineFilter(activeFilter);
 }
 
@@ -214,7 +224,7 @@ function updateTimelineFilter(filter) {
   // Group by month
   const groups = {};
   filtered.forEach(t => {
-    const d = t._dateObj;
+    const d = new Date(t.date);
     const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
     if (!groups[key]) groups[key] = { label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`, tests: [] };
     groups[key].tests.push(t);
@@ -298,10 +308,11 @@ function openTestDetail(id) {
   if (!t) return;
 
   const c = TYPE_COLORS[t.type];
-  const d = t._dateObj;
-  const days = Math.ceil((t._time - TODAY_TIME) / 86400000);
-  const isPast = t._time < TODAY_TIME;
-  const isToday = t._time === TODAY_TIME;
+  const d = new Date(t.date);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = Math.ceil((d - today) / (1000*60*60*24));
+  const isPast = d < today;
+  const isToday = d.getTime() === today.getTime();
 
   const dateStr = d.toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
